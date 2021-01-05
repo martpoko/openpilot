@@ -59,29 +59,26 @@ def create_mqb_acc_buttons_control(packer, bus, buttonStatesToSend, CS, idx):
 def create_pq_acc_control(packer, bus, acc_status, apply_accel, idx):
   values = {
     "ACS_Typ_ACC": 2,  # FIXME: locked to stop and go, need to tweak for cars that only support follow-to-stop
-    "ACS_StSt_Info": acc_status,
-    #"ACC_Status_ACC": acc_status,
-    "ACS_FreigSollB": 1, #pq version of \/?
-    #"ACC_StartStopp_Info": 1,  # FIXME: always set stop prevent flag for Stop-Start coordinator for now, get fancy later
+    "ACS_Sta_ADR": acc_status,
+    "ACS_StSt_Info": 1,  # FIXME: always set stop prevent flag for Stop-Start coordinator for now, get fancy later
     "ACS_Sollbeschl": apply_accel if acc_status == 3 else 3.01,
-    "ACS_zul_Regelabw": 0.5, #Only PQ Equilavent found to \/
-    #"ACC_zul_Regelabw_unten": 0.5,  # FIXME: need comfort regulation logic here
-    #"ACC_zul_Regelabw_oben": 0.5,  # FIXME: need comfort regulation logic here
-    #"ACS_Sollbeschl": 3.0, #Only PQ Equilavent found to \/
-    #"ACC_neg_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
-    #"ACC_pos_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
-    "ACC_Anfahren": 0,  # FIXME: set briefly when taking off from standstill
-    "ACC_Anhalten": 0  # FIXME: hold true when at standstill
+    "ACS_max_AendGrad": 3.0,  # FIXME: need gradient regulation logic here
+    # Not needed for PQ? "ACC_pos_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
+    "ACS_zul_Regelabw": 0.5, # \/
+    #  "ACC_zul_Regelabw_unten": 0.5,  # FIXME: need comfort regulation logic here
+    #  "ACC_zul_Regelabw_oben": 0.5,  # FIXME: need comfort regulation logic here
+    # cant use acc at standstill "ACC_Anfahren": 0,  # FIXME: set briefly when taking off from standstill
+    # cant use acc at standstill "ACC_Anhalten": 0  # FIXME: hold true when at standstill
   }
 
   return packer.make_can_msg("ACC_06", bus, values, idx)
 
 def create_pq_acc_hud_control(packer, bus, acc_status, set_speed, idx):
   values = {
-    "ACC_Status_Anziege": acc_status,
-    "ACC_Wunschgeschw": set_speed * CV.MS_TO_KPH,
-    "ACC_Gesetzte_Zeitluecke": 3,
-    "ACC_Display_Prio": 3
+    "ACA_StaACC": acc_status,
+    "ACA_V_Wunsch": set_speed * CV.MS_TO_KPH,
+    "ACA_Zeitluecke": 3,
+    "ACA_PrioDisp": 3
   }
 
   return packer.make_can_msg("ACC_02", bus, values, idx)
