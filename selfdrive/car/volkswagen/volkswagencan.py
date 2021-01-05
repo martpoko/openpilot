@@ -1,3 +1,4 @@
+from selfdrive.config import Conversions as CV
 # ----------------------------------------------------------------------- #
 #                                                                         #
 # CAN message packing for MQB vehicles                                    #
@@ -54,6 +55,36 @@ def create_mqb_acc_buttons_control(packer, bus, buttonStatesToSend, CS, idx):
   }
 
   return packer.make_can_msg("GRA_ACC_01", bus, values, idx)
+  
+def create_pq_acc_control(packer, bus, acc_status, apply_accel, idx):
+  values = {
+    "ACS_Typ_ACC": 2,  # FIXME: locked to stop and go, need to tweak for cars that only support follow-to-stop
+    "ACS_StSt_Info": acc_status,
+    #"ACC_Status_ACC": acc_status,
+    "ACS_FreigSollB": 1, #pq version of \/?
+    #"ACC_StartStopp_Info": 1,  # FIXME: always set stop prevent flag for Stop-Start coordinator for now, get fancy later
+    "ACS_Sollbeschl": apply_accel if acc_status == 3 else 3.01,
+    "ACS_zul_Regelabw": 0.5, #Only PQ Equilavent found to \/
+    #"ACC_zul_Regelabw_unten": 0.5,  # FIXME: need comfort regulation logic here
+    #"ACC_zul_Regelabw_oben": 0.5,  # FIXME: need comfort regulation logic here
+    #"ACS_Sollbeschl": 3.0, #Only PQ Equilavent found to \/
+    #"ACC_neg_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
+    #"ACC_pos_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
+    "ACC_Anfahren": 0,  # FIXME: set briefly when taking off from standstill
+    "ACC_Anhalten": 0  # FIXME: hold true when at standstill
+  }
+
+  return packer.make_can_msg("ACC_06", bus, values, idx)
+
+def create_pq_acc_hud_control(packer, bus, acc_status, set_speed, idx):
+  values = {
+    "ACC_Status_Anziege": acc_status,
+    "ACC_Wunschgeschw": set_speed * CV.MS_TO_KPH,
+    "ACC_Gesetzte_Zeitluecke": 3,
+    "ACC_Display_Prio": 3
+  }
+
+  return packer.make_can_msg("ACC_02", bus, values, idx)
 
 # ----------------------------------------------------------------------- #
 #                                                                         #
@@ -85,7 +116,7 @@ def create_pq_steering_control(packer, bus, apply_steer, idx, lkas_enabled):
   values["HCA_Checksumme"] = dat[1] ^ dat[2] ^ dat[3] ^ dat[4]
   return packer.make_can_msg("HCA_1", bus, values)
 
-def create_pq_hud_control(packer, bus, hca_enabled, steering_pressed, hud_alert, leftLaneVisible, rightLaneVisible,
+def create_pq_lkas_hud_control(packer, bus, hca_enabled, steering_pressed, hud_alert, leftLaneVisible, rightLaneVisible,
                            ldw_lane_warning_left, ldw_lane_warning_right, ldw_side_dlc_tlc, ldw_dlc, ldw_tlc):
   if hca_enabled:
     leftlanehud = 3 if leftLaneVisible else 1
@@ -106,4 +137,9 @@ def create_pq_hud_control(packer, bus, hca_enabled, steering_pressed, hud_alert,
 pass
 
 def create_pq_acc_buttons_control(packer, bus, buttonStatesToSend, CS, idx):
-  pass
+  values = {
+    "GRA_Neu_Zaehler": idx,
+    "GRA_Sender": CS.graSenderCoding,
+    "GRA_Abbrechen": 1 if (buttonStatesToSend["cancel"] or CS.buttonStates["cancel"]) else 0,
+    "GRA_Hauptschalt": CS.graHauptschalter,
+  }

@@ -39,9 +39,11 @@ const int VOLKSWAGEN_MQB_RX_CHECKS_LEN = sizeof(volkswagen_mqb_rx_checks) / size
 #define MSG_GRA_NEU     0x38A   // TX by OP, ACC control buttons for cancel/resume
 #define MSG_BREMSE_3    0x4A0   // RX from ABS, for wheel speeds
 #define MSG_LDW_1       0x5BE   // TX by OP, Lane line recognition and text alerts
+#define MSG_ACC_06      0x368   // TX by OP, ACC control instructions to the drivetrain coordinator
+#define MSG_ACC_02      0x56A   // TX by OP, ACC HUD data to the instrument cluster
 
 // Transmit of GRA_Neu is allowed on bus 0 and 2 to keep compatibility with gateway and camera integration
-const CanMsg VOLKSWAGEN_PQ_TX_MSGS[] = {{MSG_HCA_1, 0, 5}, {MSG_GRA_NEU, 0, 4}, {MSG_GRA_NEU, 2, 4}, {MSG_LDW_1, 0, 8}, {MSG_AWV_1, 0, 5}};
+const CanMsg VOLKSWAGEN_PQ_TX_MSGS[] = {{MSG_HCA_1, 0, 5}, {MSG_ACC_06, 0}, {MSG_GRA_NEU, 0, 4}, {MSG_GRA_NEU, 2, 4}, {MSG_LDW_1, 0, 8}, {MSG_AWV_1, 0, 5}};
 const int VOLKSWAGEN_PQ_TX_MSGS_LEN = sizeof(VOLKSWAGEN_PQ_TX_MSGS) / sizeof(VOLKSWAGEN_PQ_TX_MSGS[0]);
 
 AddrCheckStruct volkswagen_pq_rx_checks[] = {
@@ -54,6 +56,8 @@ const int VOLKSWAGEN_PQ_RX_CHECKS_LEN = sizeof(volkswagen_pq_rx_checks) / sizeof
 
 int volkswagen_torque_msg = 0;
 int volkswagen_lane_msg = 0;
+int volkswagen_acc_ctrl_msg = 0;
+int volkswagen_acc_hud_msg = 0;
 uint8_t volkswagen_crc8_lut_8h2f[256]; // Static lookup table for CRC8 poly 0x2F, aka 8H2F/AUTOSAR
 
 
@@ -135,6 +139,8 @@ static void volkswagen_pq_init(int16_t param) {
   relay_malfunction_reset();
   volkswagen_torque_msg = MSG_HCA_1;
   volkswagen_lane_msg = MSG_LDW_1;
+  volkswagen_acc_ctrl_msg = MSG_ACC_06;
+  volkswagen_acc_hud_msg = MSG_ACC_02;
 }
 
 static int volkswagen_mqb_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
@@ -367,8 +373,10 @@ static int volkswagen_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
         bus_fwd = -1;
         break;
       case 2:
-        if ((addr == volkswagen_torque_msg) || (addr == volkswagen_lane_msg)) {
-          // OP takes control of the Heading Control Assist and Lane Departure Warning messages from the camera
+		// OP takes control of the Heading Control Assist and Lane Departure Warning messages from the camera
+		// For longitudinal control, OP also takes control of ACC messaging
+        if ((addr == volkswagen_torque_msg) || (addr == volkswagen_lane_msg) || \
+            (addr == volkswagen_acc_ctrl_msg) || (addr == volkswagen_acc_hud_msg)) {
           bus_fwd = -1;
         } else {
           // Forward all remaining traffic from Extended CAN devices to J533 gateway

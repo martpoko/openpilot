@@ -5,6 +5,8 @@ class CarControllerParams:
   HCA_STEP = 2                   # HCA message frequency 50Hz on all vehicles
   MQB_LDW_STEP = 10              # LDW message frequency 10Hz on MQB
   PQ_LDW_STEP = 5                # LDW message frequency 20Hz on PQ35/PQ46/NMS
+  ACC_CONTROL_STEP = 2           # ACC_06 message frequency 50Hz
+  ACC_HUD_STEP = 6               # ACC_02 message frequency 16Hz
   GRA_ACC_STEP = 3               # GRA_ACC_01 message frequency 33Hz
   MOB_STEP = 2                   # PQ_MOB message frequency 50Hz
   AWV_STEP = 2                   # ACC LED Control

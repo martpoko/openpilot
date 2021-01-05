@@ -105,6 +105,18 @@ class CarInterface(CarInterfaceBase):
     else:
       ret.networkLocation = NWL.gateway
 
+    # FIXME: Stub/test long parameters borrowed from Toyota
+    ret.openpilotLongitudinalControl = True
+    ret.minEnableSpeed = -1.
+    ret.longitudinalTuning.deadzoneBP = [0., 9.]
+    ret.longitudinalTuning.deadzoneV = [0., .15]
+    ret.longitudinalTuning.kpBP = [0., 5., 35.]
+    ret.longitudinalTuning.kiBP = [0., 35.]
+    ret.gasMaxBP = [0.]
+    ret.gasMaxV = [0.5]
+    ret.longitudinalTuning.kpV = [3.6, 2.4, 1.5]
+    ret.longitudinalTuning.kiV = [0.54, 0.36]
+
     cloudlog.warning("Detected safety model: %s", ret.safetyModel)
     cloudlog.warning("Detected network location: %s", ret.networkLocation)
     cloudlog.warning("Detected transmission type: %s", ret.transmissionType)
@@ -200,6 +212,7 @@ class CarInterface(CarInterfaceBase):
                    c.hudControl.visualAlert,
                    c.hudControl.audibleAlert,
                    c.hudControl.leftLaneVisible,
-                   c.hudControl.rightLaneVisible)
+                   c.hudControl.rightLaneVisible,
+                   c.hudControl.setSpeed)
     self.frame += 1
     return can_sends

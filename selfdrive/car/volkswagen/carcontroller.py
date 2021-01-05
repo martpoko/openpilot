@@ -4,6 +4,25 @@ from selfdrive.car.volkswagen import volkswagencan
 from selfdrive.car.volkswagen.values import DBC, CANBUS, NWL, MQB_LDW_MESSAGES, BUTTON_STATES, CarControllerParams
 from opendbc.can.packer import CANPacker
 
+# Accel limits
+ACCEL_HYST_GAP = 0.02  # don't change accel command for small oscillations within this value
+ACCEL_MAX = 1.5  # 1.5 m/s2
+ACCEL_MIN = -3.0 # 3   m/s2
+ACCEL_SCALE = max(ACCEL_MAX, -ACCEL_MIN)
+
+def accel_hysteresis(accel, accel_steady, enabled):
+
+  # for small accel oscillations within ACCEL_HYST_GAP, don't change the accel command
+  if not enabled:
+    # send 0 when disabled, otherwise acc faults
+    accel_steady = 0.
+  elif accel > accel_steady + ACCEL_HYST_GAP:
+    accel_steady = accel - ACCEL_HYST_GAP
+  elif accel < accel_steady - ACCEL_HYST_GAP:
+    accel_steady = accel + ACCEL_HYST_GAP
+  accel = accel_steady
+
+  return accel, accel_steady
 
 class CarController():
   def __init__(self, dbc_name, CP, VM):
@@ -11,6 +30,7 @@ class CarController():
 
     self.packer_pt = CANPacker(DBC[CP.carFingerprint]['pt'])
     self.acc_bus = CANBUS.pt if CP.networkLocation == NWL.fwdCamera else CANBUS.cam
+    self.accel_steady = 0
 
     if CP.safetyModel == car.CarParams.SafetyModel.volkswagen:
       self.create_steering_control = volkswagencan.create_mqb_steering_control
@@ -20,7 +40,7 @@ class CarController():
     elif CP.safetyModel == car.CarParams.SafetyModel.volkswagenPq:
       self.create_steering_control = volkswagencan.create_pq_steering_control
       self.create_acc_buttons_control = volkswagencan.create_pq_acc_buttons_control
-      self.create_hud_control = volkswagencan.create_pq_hud_control
+      self.create_hud_control = volkswagencan.create_pq_lkas_hud_control
       self.ldw_step = CarControllerParams.PQ_LDW_STEP
 
     self.hcaSameTorqueCount = 0
@@ -38,7 +58,7 @@ class CarController():
 
     self.steer_rate_limited = False
 
-  def update(self, enabled, CS, frame, actuators, visual_alert, audible_alert, leftLaneVisible, rightLaneVisible):
+  def update(self, enabled, CS, frame, actuators, visual_alert, audible_alert, leftLaneVisible, rightLaneVisible, set_speed):
     """ Controls thread """
 
     P = CarControllerParams
@@ -60,7 +80,33 @@ class CarController():
 
       can_sends.append(
         self.create_awv_control(self.packer_pt, CANBUS.pt, idx, orange_led, green_led))
+        
     #--------------------------------------------------------------------------
+    #                                                                         #
+    # Prepare ACC_06 accel and decel commands                                 #
+    #                                                                         #
+    #--------------------------------------------------------------------------
+
+    acc_status = 3 if enabled else 2
+    apply_accel = actuators.gas - actuators.brake
+    apply_accel, self.accel_steady = accel_hysteresis(apply_accel, self.accel_steady, enabled)
+    apply_accel = clip(apply_accel * ACCEL_SCALE, ACCEL_MIN, ACCEL_MAX)
+
+    if frame % P.ACC_CONTROL_STEP == 0:
+      idx = (frame / P.ACC_CONTROL_STEP) % 16
+      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, self.acc_bus, acc_status, apply_accel, idx))
+
+    #--------------------------------------------------------------------------
+    #                                                                         #
+    # Prepare ACC_02 ACC HUD updates                                          #
+    #                                                                         #
+    #--------------------------------------------------------------------------
+
+    if frame % P.ACC_HUD_STEP == 0:
+      idx = (frame / P.ACC_HUD_STEP) % 16
+      can_sends.append(volkswagencan.create_pq_acc_hud_control(self.packer_pt, self.acc_bus, acc_status, set_speed, idx))
+
+      #--------------------------------------------------------------------------
     #                                                                         #
     # Prepare HCA_01 Heading Control Assist messages with steering torque.    #
     #                                                                         #
