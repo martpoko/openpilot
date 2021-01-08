@@ -72,19 +72,19 @@ class CarController():
     #--------------------------------------------------------------------------
 
     # FIXME: hax, need mainswitch state here but it's not working right??
-    if CS.tsk_status == 1:
-      acc_status = 1
-    elif CS.sw_main_switch:
-      acc_status = 3 if enabled else 2
-    else:
-      acc_status = 2
+    #if CS.tsk_status == 1:
+    #  acc_status = 1
+    #elif CS.sw_main_switch:
+    #  acc_status = 3 if enabled else 2
+    #else:
+    #  acc_status = 2
 
     apply_accel = actuators.gas - actuators.brake
     apply_accel = clip(apply_accel * ACCEL_SCALE, ACCEL_MIN, ACCEL_MAX)
 
     if frame % P.ACC_CONTROL_STEP == 0:
       idx = (frame / P.ACC_CONTROL_STEP) % 16
-      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, CANBUS.pt, acc_status, apply_accel, CS.out.standstill, idx))
+      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, CANBUS.pt, CS.tsk_status, apply_accel, CS.out.standstill, idx))
 
     #--------------------------------------------------------------------------
     #                                                                         #
@@ -94,7 +94,7 @@ class CarController():
 
     if frame % P.ACC_HUD_STEP == 0:
       idx = (frame / P.ACC_HUD_STEP) % 16
-      can_sends.append(volkswagencan.create_pq_acc_hud_control(self.packer_pt, CANBUS.pt, acc_status, set_speed, idx))
+      can_sends.append(volkswagencan.create_pq_acc_hud_control(self.packer_pt, CANBUS.pt, CS.tsk_status, set_speed, idx))
 
       #--------------------------------------------------------------------------
     #                                                                         #

@@ -230,17 +230,30 @@ class CarState(CarStateBase):
     self.ldw_dlc = False
     self.ldw_tlc = False
     
-    # Update drivetrain coordinator status
-    self.tsk_status = pt_cp.vl["TSK_06"]['TSK_Status']
-    
     # Toggle software cruise main switch on rising edge of steering wheel button
     # FIXME: gate this on steering wheel button variant of controls (as opposed to stalk version)
     self.main_mc_button_cur = pt_cp.vl["GRA_ACC_01"]['GRA_Hauptschalter']
     if self.main_mc_button_cur and not self.main_mc_button_prev:
       self.sw_main_switch = not self.sw_main_switch
     self.main_mc_button_prev = self.main_mc_button_cur
-    
     ret.cruiseState.available = self.sw_main_switch
+    
+    # Update drivetrain coordinator status
+    self.tsk_status = pt_cp.vl["TSK_06"]['TSK_Status']
+    
+    if self.tsk_status == 2:
+      # ACC okay and enabled, but not currently engaged
+      ret.cruiseState.available = True
+      ret.cruiseState.enabled = False
+    elif self.tsk_status in [3, 4, 5]:
+      # ACC okay and enabled, currently engaged and regulating speed (3) or engaged with driver accelerating (4) or overrun (5)
+      ret.cruiseState.available = True
+      ret.cruiseState.enabled = True
+    else:
+      # ACC okay but disabled (1), or a radar visibility or other fault/disruption (6 or 7)
+      ret.cruiseState.available = False
+      ret.cruiseState.enabled = False
+    
     
     # Update ACC radar status.
     # FIXME: This is unfinished and not fully correct, need to improve further

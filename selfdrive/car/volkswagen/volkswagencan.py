@@ -64,7 +64,7 @@ def create_pq_acc_control(packer, bus, acc_status, apply_accel, idx):
     "ACS_Sollbeschl": apply_accel if acc_status == 3 else 3.01,
     "ACS_max_AendGrad": 3.0 if acc_status == 3 else 0,  # FIXME: need gradient regulation logic here
     # Not needed for PQ? "ACC_pos_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
-    "ACS_zul_Regelabw": 1.0 if acc_status == 3 else 0, # \/
+    "ACS_zul_Regelabw": 0.25 if acc_status == 3 else 0, # \/
     #  "ACC_zul_Regelabw_unten": 0.5,  # FIXME: need comfort regulation logic here
     #  "ACC_zul_Regelabw_oben": 0.5,  # FIXME: need comfort regulation logic here
     # cant use acc at standstill "ACC_Anfahren": 0,  # FIXME: set briefly when taking off from standstill
