@@ -110,14 +110,14 @@ class CarInterface(CarInterfaceBase):
     ret.enableCruise = False
     ret.stoppingControl = True
     ret.openpilotLongitudinalControl = True
-    #ret.longitudinalTuning.deadzoneBP = [0., 9.]
-    #ret.longitudinalTuning.deadzoneV = [0., .15]
-    #ret.longitudinalTuning.kpBP = [0., 5., 35.]
-    #ret.longitudinalTuning.kiBP = [0., 35.]
-    #ret.longitudinalTuning.kpV = [3.6, 2.4, 1.5]
-    #ret.longitudinalTuning.kiV = [0.54, 0.36]
-    ret.longitudinalTuning.kpV = [5.0]
-    ret.longitudinalTuning.kiV = [1.0]
+    ret.longitudinalTuning.deadzoneBP = [0., 9.]
+    ret.longitudinalTuning.deadzoneV = [0., .15]
+    ret.longitudinalTuning.kpBP = [0., 5., 35.]
+    ret.longitudinalTuning.kiBP = [0., 35.]
+    ret.longitudinalTuning.kpV = [3.6, 2.4, 1.5]
+    ret.longitudinalTuning.kiV = [0.54, 0.36]
+    #ret.longitudinalTuning.kpV = [5.0]
+    #ret.longitudinalTuning.kiV = [1.0]
 
     cloudlog.warning("Detected safety model: %s", ret.safetyModel)
     cloudlog.warning("Detected network location: %s", ret.networkLocation)
@@ -143,10 +143,10 @@ class CarInterface(CarInterfaceBase):
 
       # do enable on falling edge of both accel and decel buttons
       if b.type in [ButtonType.setCruise, ButtonType.resumeCruise, ButtonType.accelCruise, ButtonType.decelCruise] and not b.pressed:
-        if self.CS.sw_main_switch:
+        if self.CS.tsk_status == 2:
           events.append(create_event('buttonEnable', [ET.ENABLE]))
-        else:
-          events.append(create_event('wrongCarMode', [ET.NO_ENTRY, ET.WARNING]))
+        #else:
+        #  events.append(create_event('wrongCarMode', [ET.NO_ENTRY, ET.WARNING]))
 
 
       # do disable on rising edge of cancel

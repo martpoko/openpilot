@@ -79,12 +79,14 @@ class CarController():
     #else:
     #  acc_status = 2
 
+    acc_status = 3 if enabled and CS.tsk_status in [2, 3, 4, 5] else CS.tsk_status
+
     apply_accel = actuators.gas - actuators.brake
     apply_accel = clip(apply_accel * ACCEL_SCALE, ACCEL_MIN, ACCEL_MAX)
 
     if frame % P.ACC_CONTROL_STEP == 0:
       idx = (frame / P.ACC_CONTROL_STEP) % 16
-      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, CANBUS.pt, CS.tsk_status, apply_accel, CS.out.standstill, idx))
+      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, CANBUS.pt, acc_status, apply_accel, CS.out.standstill, idx))
 
     #--------------------------------------------------------------------------
     #                                                                         #
