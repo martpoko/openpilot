@@ -60,11 +60,11 @@ def create_pq_acc_control(packer, bus, acc_status, apply_accel, idx):
   values = {
     "ACS_Typ_ACC": 2,  # FIXME: locked to stop and go, need to tweak for cars that only support follow-to-stop
     "ACS_Sta_ADR": acc_status,
-    "ACS_StSt_Info": 1,  # FIXME: always set stop prevent flag for Stop-Start coordinator for now, get fancy later
+    "ACS_StSt_Info": 1 if acc_status == 3 else 0,
     "ACS_Sollbeschl": apply_accel if acc_status == 3 else 3.01,
-    "ACS_max_AendGrad": 3.0,  # FIXME: need gradient regulation logic here
+    "ACS_max_AendGrad": 3.0 if acc_status == 3 else 0,  # FIXME: need gradient regulation logic here
     # Not needed for PQ? "ACC_pos_Sollbeschl_Grad_02": 3.0,  # FIXME: need gradient regulation logic here
-    "ACS_zul_Regelabw": 0.5, # \/
+    "ACS_zul_Regelabw": 1.0 if acc_status == 3 else 0, # \/
     #  "ACC_zul_Regelabw_unten": 0.5,  # FIXME: need comfort regulation logic here
     #  "ACC_zul_Regelabw_oben": 0.5,  # FIXME: need comfort regulation logic here
     # cant use acc at standstill "ACC_Anfahren": 0,  # FIXME: set briefly when taking off from standstill
@@ -138,5 +138,5 @@ def create_pq_acc_buttons_control(packer, bus, buttonStatesToSend, CS, idx):
     "GRA_Neu_Zaehler": idx,
     "GRA_Sender": CS.graSenderCoding,
     "GRA_Abbrechen": 1 if (buttonStatesToSend["cancel"] or CS.buttonStates["cancel"]) else 0,
-    "GRA_Hauptschalt": CS.graHauptschalter,
+    "GRA_Hauptschalt": CS.graHauptschalter, CS.sw_main_switch,
   }

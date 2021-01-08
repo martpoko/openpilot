@@ -30,6 +30,11 @@ class CarState(CarStateBase):
 
     self.buttonStates = BUTTON_STATES.copy()
 
+    self.sw_main_switch = False  # Software main cruise switch
+    self.main_mc_button_cur = False  # Momentary contact steering-wheel button main switch
+    self.main_mc_button_prev = False
+    self.tsk_status = 1  # Drivetrain coordinator init state
+
   def update_mqb(self, pt_cp, cam_cp, acc_cp, trans_type):
     ret = car.CarState.new_message()
     # Update vehicle speed and acceleration from ABS wheel speeds.
@@ -155,6 +160,8 @@ class CarState(CarStateBase):
     # Pick up the GRA_ACC_01 CAN message counter so we can sync to it for
     # later cruise-control button spamming.
     self.graMsgBusCounter = pt_cp.vl["GRA_ACC_01"]['COUNTER']
+    
+    ret.cruiseState.available = bool(self.graHauptschalter)
 
     # Check to make sure the electric power steering rack is configured to
     # accept and respond to HCA_01 messages and has not encountered a fault.
@@ -223,16 +230,29 @@ class CarState(CarStateBase):
     self.ldw_dlc = False
     self.ldw_tlc = False
     
+    # Update drivetrain coordinator status
+    self.tsk_status = pt_cp.vl["TSK_06"]['TSK_Status']
+    
+    # Toggle software cruise main switch on rising edge of steering wheel button
+    # FIXME: gate this on steering wheel button variant of controls (as opposed to stalk version)
+    self.main_mc_button_cur = pt_cp.vl["GRA_ACC_01"]['GRA_Hauptschalter']
+    if self.main_mc_button_cur and not self.main_mc_button_prev:
+      self.sw_main_switch = not self.sw_main_switch
+    self.main_mc_button_prev = self.main_mc_button_cur
+    
+    ret.cruiseState.available = self.sw_main_switch
+    
     # Update ACC radar status.
     # FIXME: This is unfinished and not fully correct, need to improve further
-    ret.cruiseState.available = bool(pt_cp.vl["GRA_Neu"]['GRA_Hauptschalt'])
-    ret.cruiseState.enabled = True if pt_cp.vl["Motor_2"]['GRA_Status'] in [1, 2] else False
+    
+    # ret.cruiseState.available = bool(pt_cp.vl["GRA_Neu"]['GRA_Hauptschalt'])
+    # ret.cruiseState.enabled = True if pt_cp.vl["Motor_2"]['GRA_Status'] in [1, 2] else False
 
     # Update ACC setpoint. When the setpoint reads as 255, the driver has not
     # yet established an ACC setpoint, so treat it as zero.
-    ret.cruiseState.speed = acc_cp.vl["ACC_GRA_Anziege"]['ACA_V_Wunsch'] * CV.KPH_TO_MS
-    if ret.cruiseState.speed > 70:  # 255 kph in m/s == no current setpoint
-      ret.cruiseState.speed = 0
+    # ret.cruiseState.speed = acc_cp.vl["ACC_GRA_Anziege"]['ACA_V_Wunsch'] * CV.KPH_TO_MS
+    # if ret.cruiseState.speed > 70:  # 255 kph in m/s == no current setpoint
+    #   ret.cruiseState.speed = 0
 
     # Update control button states for turn signals and ACC controls.
     self.buttonStates["accelCruise"] = bool(pt_cp.vl["GRA_Neu"]['GRA_Up_kurz']) or bool(pt_cp.vl["GRA_Neu"]['GRA_Up_lang'])
@@ -248,7 +268,6 @@ class CarState(CarStateBase):
     # to the radar. Ends up being different for steering wheel buttons vs
     # third stalk type controls.
     # TODO: Check to see what info we need to passthru and spoof on PQ
-    self.graHauptschalter = pt_cp.vl["GRA_Neu"]['GRA_Hauptschalt']
     self.graTypHauptschalter = False
     self.graButtonTypeInfo = False
     self.graTipStufe2 = False

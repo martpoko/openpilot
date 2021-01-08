@@ -246,6 +246,7 @@ static int volkswagen_pq_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
     generic_rx_checks((addr == MSG_HCA_1));
   }
+  controls_allowed = 1;  // Hax for long testing
   return valid;
 }
 

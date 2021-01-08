@@ -5,24 +5,9 @@ from selfdrive.car.volkswagen.values import DBC, CANBUS, NWL, MQB_LDW_MESSAGES, 
 from opendbc.can.packer import CANPacker
 
 # Accel limits
-ACCEL_HYST_GAP = 0.02  # don't change accel command for small oscillations within this value
 ACCEL_MAX = 1.5  # 1.5 m/s2
 ACCEL_MIN = -3.0 # 3   m/s2
 ACCEL_SCALE = max(ACCEL_MAX, -ACCEL_MIN)
-
-def accel_hysteresis(accel, accel_steady, enabled):
-
-  # for small accel oscillations within ACCEL_HYST_GAP, don't change the accel command
-  if not enabled:
-    # send 0 when disabled, otherwise acc faults
-    accel_steady = 0.
-  elif accel > accel_steady + ACCEL_HYST_GAP:
-    accel_steady = accel - ACCEL_HYST_GAP
-  elif accel < accel_steady - ACCEL_HYST_GAP:
-    accel_steady = accel + ACCEL_HYST_GAP
-  accel = accel_steady
-
-  return accel, accel_steady
 
 class CarController():
   def __init__(self, dbc_name, CP, VM):
@@ -30,7 +15,6 @@ class CarController():
 
     self.packer_pt = CANPacker(DBC[CP.carFingerprint]['pt'])
     self.acc_bus = CANBUS.pt if CP.networkLocation == NWL.fwdCamera else CANBUS.cam
-    self.accel_steady = 0
 
     if CP.safetyModel == car.CarParams.SafetyModel.volkswagen:
       self.create_steering_control = volkswagencan.create_mqb_steering_control
@@ -87,14 +71,20 @@ class CarController():
     #                                                                         #
     #--------------------------------------------------------------------------
 
-    acc_status = 3 if enabled else 2
+    # FIXME: hax, need mainswitch state here but it's not working right??
+    if CS.tsk_status == 1:
+      acc_status = 1
+    elif CS.sw_main_switch:
+      acc_status = 3 if enabled else 2
+    else:
+      acc_status = 2
+
     apply_accel = actuators.gas - actuators.brake
-    apply_accel, self.accel_steady = accel_hysteresis(apply_accel, self.accel_steady, enabled)
     apply_accel = clip(apply_accel * ACCEL_SCALE, ACCEL_MIN, ACCEL_MAX)
 
     if frame % P.ACC_CONTROL_STEP == 0:
       idx = (frame / P.ACC_CONTROL_STEP) % 16
-      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, self.acc_bus, acc_status, apply_accel, idx))
+      can_sends.append(volkswagencan.create_pq_acc_control(self.packer_pt, CANBUS.pt, acc_status, apply_accel, CS.out.standstill, idx))
 
     #--------------------------------------------------------------------------
     #                                                                         #
@@ -104,7 +94,7 @@ class CarController():
 
     if frame % P.ACC_HUD_STEP == 0:
       idx = (frame / P.ACC_HUD_STEP) % 16
-      can_sends.append(volkswagencan.create_pq_acc_hud_control(self.packer_pt, self.acc_bus, acc_status, set_speed, idx))
+      can_sends.append(volkswagencan.create_pq_acc_hud_control(self.packer_pt, CANBUS.pt, acc_status, set_speed, idx))
 
       #--------------------------------------------------------------------------
     #                                                                         #
@@ -217,17 +207,17 @@ class CarController():
     # First create any virtual button press event needed by openpilot, to sync
     # stock ACC with OP disengagement, or to auto-resume from stop.
 
-    if frame > self.graMsgStartFramePrev + P.GRA_VBP_STEP:
-      if not enabled and CS.out.cruiseState.enabled:
-        # Cancel ACC if it's engaged with OP disengaged.
-        self.graButtonStatesToSend = BUTTON_STATES.copy()
-        self.graButtonStatesToSend["cancel"] = True
-      elif enabled and CS.out.standstill:
-        # Blip the Resume button if we're engaged at standstill.
-        # FIXME: This is a naive implementation, improve with visiond or radar input.
-        # A subset of MQBs like to "creep" too aggressively with this implementation.
-        self.graButtonStatesToSend = BUTTON_STATES.copy()
-        self.graButtonStatesToSend["resumeCruise"] = True
+    #if frame > self.graMsgStartFramePrev + P.GRA_VBP_STEP:
+    #  if not enabled and CS.out.cruiseState.enabled:
+    #    # Cancel ACC if it's engaged with OP disengaged.
+    #    self.graButtonStatesToSend = BUTTON_STATES.copy()
+    #    self.graButtonStatesToSend["cancel"] = True
+    #  elif enabled and CS.out.standstill:
+    #    # Blip the Resume button if we're engaged at standstill.
+    #    # FIXME: This is a naive implementation, improve with visiond or radar input.
+    #    # A subset of MQBs like to "creep" too aggressively with this implementation.
+    #    self.graButtonStatesToSend = BUTTON_STATES.copy()
+    #    self.graButtonStatesToSend["resumeCruise"] = True
 
     # OP/Panda can see this message but can't filter it when integrated at the
     # R242 LKAS camera. It could do so if integrated at the J533 gateway, but
@@ -254,16 +244,16 @@ class CarController():
     # (GG) to the next valid car message is less than 1 * GRA_ACC_STEP. J428
     # tolerates the gap just fine and control returns to the car immediately.
 
-    if CS.graMsgBusCounter != self.graMsgBusCounterPrev:
-      self.graMsgBusCounterPrev = CS.graMsgBusCounter
-      if self.graButtonStatesToSend is not None:
-        if self.graMsgSentCount == 0:
-          self.graMsgStartFramePrev = frame
-        idx = (CS.graMsgBusCounter + 1) % 16
-        can_sends.append(self.create_acc_buttons_control(self.packer_pt, self.acc_bus, self.graButtonStatesToSend, CS, idx))
-        self.graMsgSentCount += 1
-        if self.graMsgSentCount >= P.GRA_VBP_COUNT:
-          self.graButtonStatesToSend = None
-          self.graMsgSentCount = 0
+    #if CS.graMsgBusCounter != self.graMsgBusCounterPrev:
+    #  self.graMsgBusCounterPrev = CS.graMsgBusCounter
+    #  if self.graButtonStatesToSend is not None:
+    #    if self.graMsgSentCount == 0:
+    #      self.graMsgStartFramePrev = frame
+    #    idx = (CS.graMsgBusCounter + 1) % 16
+    #    can_sends.append(self.create_acc_buttons_control(self.packer_pt, self.acc_bus, self.graButtonStatesToSend, CS, idx))
+    #    self.graMsgSentCount += 1
+    #    if self.graMsgSentCount >= P.GRA_VBP_COUNT:
+    #      self.graButtonStatesToSend = None
+    #      self.graMsgSentCount = 0
 
     return can_sends

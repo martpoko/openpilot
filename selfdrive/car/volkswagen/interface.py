@@ -6,6 +6,7 @@ from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness,
 from selfdrive.car.interfaces import CarInterfaceBase
 
 EventName = car.CarEvent.EventName
+ButtonType = car.CarState.ButtonEvent.Type 
 
 class CarInterface(CarInterfaceBase):
   def __init__(self, CP, CarController, CarState):
@@ -31,7 +32,7 @@ class CarInterface(CarInterfaceBase):
 
     ret.enableCamera = True  # Stock camera detection doesn't apply to VW
     ret.carName = "volkswagen"
-    ret.radarOffCan = True
+    ret.radarOffCan = False  # Test hax
 
     # Common default parameters that may be overridden per-vehicle
     ret.steerRateCost = 1.0
@@ -106,6 +107,8 @@ class CarInterface(CarInterfaceBase):
       ret.networkLocation = NWL.gateway
 
     # FIXME: Stub/test long parameters borrowed from Toyota
+    ret.enableCruise = False
+    ret.stoppingControl = True
     ret.openpilotLongitudinalControl = True
     ret.minEnableSpeed = -1.
     ret.longitudinalTuning.deadzoneBP = [0., 9.]
@@ -135,6 +138,18 @@ class CarInterface(CarInterfaceBase):
   # returns a car.CarState
   def update(self, c, can_strings):
     buttonEvents = []
+
+    # NOTE: Test non-cruise long stuff borrowed from Honda
+    for b in buttonEvents:
+
+      # do enable on both accel and decel buttons
+      if b.type in [ButtonType.setCruise, ButtonType.resumeCruise, ButtonType.accelCruise, ButtonType.decelCruise] and not b.pressed:
+        events.append(create_event('buttonEnable', [ET.ENABLE]))
+
+
+      # do disable on button down
+      if b.type == "cancel" and b.pressed:
+        events.append(create_event('buttonCancel', [ET.USER_DISABLE]))
 
     # Process the most recent CAN message traffic, and check for validity
     # The camera CAN has no signals we use at this time, but we process it
@@ -168,6 +183,8 @@ class CarInterface(CarInterfaceBase):
       events.add(EventName.parkBrake)
     if self.CS.steeringFault:
       events.add(EventName.steerTempUnavailable)
+    if self.CS.tsk_status in [6, 7]:
+      events.append(create_event('gasUnavailable', [ET.NO_ENTRY, ET.SOFT_DISABLE]))
     
     #PQTIMEBOMB STUFF START
     #Warning alert for the 6min timebomb found on PQ's
