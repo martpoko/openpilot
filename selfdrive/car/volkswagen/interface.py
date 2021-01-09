@@ -144,14 +144,14 @@ class CarInterface(CarInterfaceBase):
       # do enable on falling edge of both accel and decel buttons
       if b.type in [ButtonType.setCruise, ButtonType.resumeCruise, ButtonType.accelCruise, ButtonType.decelCruise] and not b.pressed:
         if self.CS.tsk_status == 2:
-          events.append(create_event('buttonEnable', [ET.ENABLE]))
+          events.add('buttonEnable')
         #else:
         #  events.append(create_event('wrongCarMode', [ET.NO_ENTRY, ET.WARNING]))
 
 
       # do disable on rising edge of cancel
       if b.type == "cancel" and b.pressed:
-        events.append(create_event('buttonCancel', [ET.USER_DISABLE]))
+        events.add('buttonCancel')
 
     # Process the most recent CAN message traffic, and check for validity
     # The camera CAN has no signals we use at this time, but we process it
