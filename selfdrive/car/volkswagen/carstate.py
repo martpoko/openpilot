@@ -225,7 +225,7 @@ class CarState(CarStateBase):
     
     # Update ACC radar status.
     # FIXME: This is unfinished and not fully correct, need to improve further
-    ret.cruiseState.available = bool(pt_cp.vl["GRA_Neu"]['GRA_Hauptschalt'])
+    ret.cruiseState.available = True #bool(pt_cp.vl["GRA_Neu"]['GRA_Hauptschalt'])
     ret.cruiseState.enabled = True if pt_cp.vl["Motor_2"]['GRA_Status'] in [1, 2] else False
 
     # Update ACC setpoint. When the setpoint reads as 255, the driver has not
