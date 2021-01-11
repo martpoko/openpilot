@@ -80,9 +80,9 @@ class CarInterface(CarInterfaceBase):
         ret.transmissionType = TRANS.manual
 
       # FIXME: Per-vehicle parameters need to be reintegrated.
-      ret.mass = 1375 + STD_CARGO_KG
+      ret.mass = 1450 + STD_CARGO_KG # previous value 1375
       ret.wheelbase = 2.65 # previous value 2.58
-      ret.centerToFront = ret.wheelbase * 0.45  # Estimated 
+      ret.centerToFront = ret.wheelbase * 0.43  # Estimated original value 0.45 new value 0.43
       ret.steerRatio = 16.4 
       
       # PQ lateral tuning HCA_Status 7
