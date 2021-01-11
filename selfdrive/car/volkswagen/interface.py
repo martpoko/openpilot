@@ -81,7 +81,7 @@ class CarInterface(CarInterfaceBase):
 
       # FIXME: Per-vehicle parameters need to be reintegrated.
       ret.mass = 1375 + STD_CARGO_KG
-      ret.wheelbase = 2.58
+      ret.wheelbase = 2.65 # previous value 2.58
       ret.centerToFront = ret.wheelbase * 0.45  # Estimated 
       ret.steerRatio = 16.4 
       
