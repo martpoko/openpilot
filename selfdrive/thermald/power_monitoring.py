@@ -17,7 +17,7 @@ CAR_VOLTAGE_LOW_PASS_K = 0.091 # LPF gain for 5s tau (dt/tau / (dt/tau + 1))
 CAR_BATTERY_CAPACITY_uWh = 30e6
 CAR_CHARGING_RATE_W = 45
 
-VBATT_PAUSE_CHARGING = 11.7 # Minimum voltage, cutoff point for C2
+VBATT_PAUSE_CHARGING = 11.5# Minimum voltage, cutoff point for C2
 MAX_TIME_OFFROAD_S = 6*3600 # Time C2 will stay alive after drive
 
 # Parameters
