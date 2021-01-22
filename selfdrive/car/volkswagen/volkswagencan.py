@@ -68,9 +68,9 @@ def create_pq_awv_control(packer, bus, idx, led_orange, led_green):
     "AWV_Zaehler": idx,
   }
 
-  dat = packer.make_can_msg("mAWV", bus, values)[2]
-  values["AWV_Checksumme"] = dat[1] ^ dat[2] ^ dat[3] ^ dat[4]
-  return packer.make_can_msg("mAWV", bus, values)
+#  dat = packer.make_can_msg("mAWV", bus, values)[2]
+#  values["AWV_Checksumme"] = dat[1] ^ dat[2] ^ dat[3] ^ dat[4]
+#  return packer.make_can_msg("mAWV", bus, values)
 
 def create_pq_steering_control(packer, bus, apply_steer, idx, lkas_enabled):
   values = {
